@@ -33,6 +33,10 @@ import com.sun.jersey.api.client.WebResource;
 		try{
 			System.out.println("callZonar called 7");
 			System.out.println("callZonar dbid is "+dbid);
+			if(dbid == null){
+				System.out.println("hardcoding dbid to 5");
+				dbid = "5";
+			}
 			
 			SimpleDateFormat sdf  = new SimpleDateFormat("yyyy-MM-dd kk:mm:ss.SSS");
 			Date startDate = sdf.parse("2015-05-10 05:00:00.000");

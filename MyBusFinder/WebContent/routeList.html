@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RouteAdmin No Dups</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" href="resources/css/themes/GreenHouseTheme.min.css" />
+<link rel="stylesheet" href="resources/css/themes/jquery.mobile.icons.min.css" />
+<link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile.structure-1.4.5.min.css" />
+<!-- JQuery -->
+	<script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+<!--  JQuery Mobile -->
+	<script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+<!--  Parse -->
+	<script type="text/javascript" src="http://www.parsecdn.com/js/parse-1.4.0.min.js"></script>
+<!-- Local Javascript Libraries -->
+   	<script src="resources/js/parseKeys.js"></script>
+
+<script>
+
+var busImage = 'images/bus.png';
+var schoolImage = 'images/school.png';
+var busMarker = new google.maps.Marker(); //this one gets set when the bus is found
+
+$(document).ready(function(){
+	alert('routeList document ready 2');
+//	alert(dev_applicationKey);
+	if(Parse.applicationId == null){
+		console.log('No Parse Application ID when entering Register');
+      	// Initialize Parse - 
+      	//BusFinder_DEV keys - first one is Application ID Key, Second one is JavaScript Key
+      	//Keys are stored in parseKeys.js file
+      	Parse.initialize(dev_applicationKey, dev_javascriptKey);
+      	console.log('Parse initialized');
+	}else{
+		alert("Parse Application ID already set"+Parse.applicationId);
+	}
+/*	
+	var currentUser = Parse.User.current();
+	if (currentUser) {
+		console.log("There is a Current user "+currentUser.id+" - logging them out.");
+		Parse.User.logOut();
+	}else{
+		console.log('No current user - staying here');
+	}
+	*/
+	
+    
+	$('#cancelButton').click(function() {
+	  	window.location.replace("findBus.html");
+	}); // end cancel button click
+	
+	getRoutes();
+}); // end ready
+
+
+function getRoutes(){
+	
+		
+//  	alert("Getting all Routes");
+ 
+	var query = new Parse.Query("BusRoute");
+	query.ascending("routeName");
+
+
+	query.find({
+  	success: function(results) {
+    	if (results) {
+//        	alert("Routes found");
+        	//console.log(results[0].get("routeName"));
+        	//alert(results[0].get("routeName"));
+        	renderData(results);
+    	} else {
+    		alert("NO Routes Found");
+    	}
+  	},
+  	error: function(error) {
+    	response.error("Error: " + error.code + " " + error.message);
+  	}
+	});// end query
+
+
+/*
+	busRoute.save({routeName: $("#txt-routeName").val()}, {
+		success: function(object) {
+			console.log("BusRoute object created");
+	        	$(".success").show();
+	      	},
+	    	error: function(model, error) {
+		   		//handleParseError(error)
+		   		$(".error").show();
+		    }
+		}); // end save 
+*/
+ 		//window.location.replace("map.html");
+	
+}
+
+
+function renderData(results){
+	//alert('top of renderData');
+	 for (i = 0; i < results.length; i++) {
+		 var routeName = results[i].get("routeName");
+		 var dbId = '5';
+
+		 var hrefText = "getLatLng("+dbId+")";
+		 console.log('hrefText is '+hrefText);
+		 var linkText = '<li><a href='+hrefText+'>'+routeName+'</a></li>'
+		 linkText = '<li><a href=\"javascript:getLatLng(\''+dbId+'\')\">'+routeName+'</a></li>';
+		 console.log('linkText is '+linkText);
+		 
+	     // $("#myList").append('<li>'+routeName+'</li>');
+	     $("#myList").append(linkText);
+	 }
+     $("#myList").listview('refresh'); // This line now updates the listview
+	
+}
+
+function accionesDocumento(tclink,tcAccion) {
+    alert(tclink);
+  }
+
+function getLatLng(dbId){
+	//remove the current bus marker
+	busMarker.setMap(null);
+	alert("getting lat/long for bus with zonar id "+dbId);
+	var restUrl = 'http://localhost:8080/MyBusFinder/api/callZonarService?dbid='+dbId;
+	//alert('restUrl is '+restUrl);
+	console.log(restUrl);
+    jQuery.support.cors = true;
+
+    $.ajax(
+            {
+                type: "GET",
+                url: restUrl,
+            //    url: 'http://50.187.151.33:8080/busFinderWeb/crunchify/callZonarService?dbid='+dbId,
+               // url: 'http://50.187.151.33:8080/busFinderWeb/crunchify/callZonarService',
+            //   url: 'http://localhost:8080/busFinderWeb/crunchify/callZonarService',
+   //             url: 'http://localhost:8080/busFinderWeb/crunchify/fakeBusService',
+                data: "{}",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (data) {
+               //	alert('success');
+               	$.each(data, function() {
+               	  $.each(this, function(k, v) {
+//               		alert ('v is '+v);
+//               		alert('top of nested .each');
+//               		alert('it had a location with latitude: '+v.location.lat);
+               		var lat = v.location.lat;
+               		var lng = v.location.lng;
+               		if(lat && lng){
+               			//alert("there was a lat and lng adding bus to map");
+               		currentLatLng = new google.maps.LatLng(lat,lng);
+               		 busMarker = new google.maps.Marker({
+               		     position: currentLatLng,
+               		     map: map,
+               		     icon: busImage,
+               		     title: "Current Location" //title appears when hover over marker
+               		 });
+               			//drawMap();
+               			//$('#theMap').load("index.html");
+               			
+               			//$('#theMap').load("map2.html?lat="+lat+"&lng="+lng);
+               			//window.location.replace("map2.html?lat="+lat+"&lng="+lng);
+               		}
+               	  }); // end nested .each
+               	}); // end each
+               	
+                }, // end success
+                error: function (msg, url, line) {
+                    alert('Error!');
+                    alert(msg.status);
+                    currentLatLng=nil;
+//                    alert('msg = ' + msg + ', url = ' + url + ', line = ' + line);
+
+                } // end error
+            }); //end .ajax get
+	
+} // end getLatLng()
+
+function handleParseError(err) {
+  	 // Show the error message somewhere and let the user try again.
+  	 alert("handleParseError...Error: " + err.code + " " + err.message);
+
+	  switch (err.code) {
+	    case Parse.Error.INVALID_SESSION_TOKEN:
+	      Parse.User.logOut();
+	      // If web browser, render a log in screen
+	      // If Express.js, redirect the user to the log in route
+	      break;
+	 
+	    // Other Parse API errors that you want to explicitly handle
+	  }
+	}
+</script>
+
+
+  
+</head>
+
+<body>
+    <div data-role="page">
+        <div data-role="header" data-theme="a">
+            <h3>RouteList</h3>
+        </div><!-- /header -->
+        <div role="main" class="ui-content">
+        
+        <ul data-role="listview" data-inset="true" data-filter="true" id="myList" name="myList">
+		</ul>
+                    
+ 
+         </div><!-- /content -->
+    </div><!-- /page -->
+</body>
+</html>
