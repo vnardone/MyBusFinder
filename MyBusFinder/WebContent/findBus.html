@@ -1,0 +1,165 @@
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>jQuery Mobile: Theme Download</title>
+	<link rel="stylesheet" href="resources/css/themes/GreenHouseTheme.min.css" />
+	<link rel="stylesheet" href="resources/css/themes/jquery.mobile.icons.min.css" />
+	<link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile.structure-1.4.5.min.css" />
+  <!--  Google Map CSS -->
+   <style type="text/css">
+    #map-page, #map-canvas { width: 100%; height: 100%; padding: 0;}
+    #map-page{padding-bottom:0px !important;}
+    .ui-header, .ui-footer {border-width: 0px 0;}
+    
+    .custom-btn {width: 500px height: 10% !important;}
+	</style>
+	
+	
+	
+	<!-- JQuery -->
+	<script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+	<!-- JQuery Mobile -->
+	<script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+	<!-- Google Map -->
+	<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&language=en"></script>
+
+	
+	
+<script>
+var mhsLatLng = new google.maps.LatLng(43.200731, -70.797281); //Marshwood H.S.
+var mmsLatLng = new google.maps.LatLng(43.1528644, -70.7972778); //Marshwood Middle School
+var currentLatLng; // this one gets set when the bus is found
+var mapOptions = {
+		// The higher the number the further in it zooms	  
+	    zoom: 12,
+	    center: mhsLatLng,
+	    mapTypeId: google.maps.MapTypeId.ROADMAP
+	  };
+var busImage = 'images/bus.png';
+var schoolImage = 'images/school.png';
+var busMarker = new google.maps.Marker(); //this one gets set when the bus is found
+
+	$(document).ready(function(){
+		//alert('document.ready');	
+		  
+		$('#findBusButton').click(function() {
+			var dbId = '5';
+		  	getLatLng(dbId);
+		}); // end testButton click	
+		
+	}); // end ready
+
+	 var map;
+
+	    function resize_map() {
+	        $('#map-canvas').height($(window).height() - $('#head').height() -  $('#testButton').height() - $('#foot').height());
+	        google.maps.event.trigger(map, "resize");
+	    }
+
+	    $( document ).on( "pageinit", "#map-page", function() {
+	    	
+	        map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
+	        // Add an overlay to the map of current lat/lng
+	        var mhsMarker = new google.maps.Marker({
+	            position: mhsLatLng,
+	            map: map,
+	            icon: schoolImage,
+	            title: "MSAD 35 Bus Finder"
+	        });
+
+	        $(window).resize(function () {
+	           resize_map();
+	        });
+	    });
+
+	    $(document).on('pagecontainershow', function(){
+	        var pageid = $("body").pagecontainer("getActivePage").prop("id");
+
+	        if(pageid === "map-page"){
+	            resize_map();
+	        }
+	    });
+	    
+	    function getLatLng(dbId){
+	    	//remove the current bus marker
+	    	busMarker.setMap(null);
+	    	alert("getting lat/long for bus with zonar id "+dbId);
+	    	var restUrl = 'http://localhost:8080/MyBusFinder/api/callZonarService?dbid='+dbId;
+	    	//alert('restUrl is '+restUrl);
+	    	console.log(restUrl);
+	        jQuery.support.cors = true;
+
+	        $.ajax(
+	                {
+	                    type: "GET",
+	                    url: restUrl,
+	                //    url: 'http://50.187.151.33:8080/busFinderWeb/crunchify/callZonarService?dbid='+dbId,
+	                   // url: 'http://50.187.151.33:8080/busFinderWeb/crunchify/callZonarService',
+	                //   url: 'http://localhost:8080/busFinderWeb/crunchify/callZonarService',
+	       //             url: 'http://localhost:8080/busFinderWeb/crunchify/fakeBusService',
+	                    data: "{}",
+	                    contentType: "application/json; charset=utf-8",
+	                    dataType: "json",
+	                    success: function (data) {
+	                   //	alert('success');
+	                   	$.each(data, function() {
+	                   	  $.each(this, function(k, v) {
+//	                   		alert ('v is '+v);
+//	                   		alert('top of nested .each');
+//	                   		alert('it had a location with latitude: '+v.location.lat);
+	                   		var lat = v.location.lat;
+	                   		var lng = v.location.lng;
+	                   		if(lat && lng){
+	                   			//alert("there was a lat and lng adding bus to map");
+	                   		currentLatLng = new google.maps.LatLng(lat,lng);
+	                   		 busMarker = new google.maps.Marker({
+	                   		     position: currentLatLng,
+	                   		     map: map,
+	                   		     icon: busImage,
+	                   		     title: "Current Location" //title appears when hover over marker
+	                   		 });
+	                   			//drawMap();
+	                   			//$('#theMap').load("index.html");
+	                   			
+	                   			//$('#theMap').load("map2.html?lat="+lat+"&lng="+lng);
+	                   			//window.location.replace("map2.html?lat="+lat+"&lng="+lng);
+	                   		}
+	                   	  }); // end nested .each
+	                   	}); // end each
+	                   	
+	                    }, // end success
+	                    error: function (msg, url, line) {
+	                        alert('Error!');
+	                        alert(msg.status);
+	                        currentLatLng=nil;
+//	                        alert('msg = ' + msg + ', url = ' + url + ', line = ' + line);
+
+	                    } // end error
+	                }); //end .ajax get
+	    	
+	    } // end getLatLng()
+</script>	
+</head>
+<body>
+
+<div data-role="page" id="map-page" data-url="map-page">
+    <div data-role="header" data-theme="a" id="head">
+    <h1>Bus Finder</h1>
+    </div>
+    	<div>
+	    <button class="ui-btn" id="findBusButton" onclick="" title="findBusButton">Click to Find Bus</button>
+	</div>	
+    <div role="main" class="ui-content" id="map-canvas">
+        <!-- map loads here... -->   			
+		</div>
+
+    <div data-role="footer"  id="foot" data-position="fixed" data-tap-toggle="false">
+        <h1></h1>
+    </div>
+</div>
+
+
+
+	</body>
+</html>
